@@ -3,7 +3,6 @@ from typing import List,Dict
 import json
 import os
 import asyncio
-import re
 
 from ...LLM import LLMOutput
 
@@ -152,12 +151,7 @@ class Graph_pipeline:
             relationship = [i.strip() for i in relationship]
             
             if len(relationship) != 3:
-                try:
-                    relationship = await self.reconstruct_relationship(relationship)
-                except Exception as e:
-                    # Skip malformed item and continue building the graph
-                    self.console.print(f"[yellow]Skipping malformed relationship ({relationship}): {e}[/yellow]")
-                    continue
+                relationship = await self.reconstruct_relationship(relationship)
             
             relationship = Relationship(relationship,text_hash_id)
             hash_id = relationship.hash_id
@@ -186,51 +180,13 @@ class Graph_pipeline:
                     self.G[edge[0]][edge[1]]['weight'] += 1
         return entities_hash_id
                 
-    def _coerce_to_json_dict(self, response) -> Dict | None:
-        # Accept dicts
-        if isinstance(response, dict):
-            return response
-        # Try to clean and parse strings
-        if not isinstance(response, str):
-            return None
-        s = response.strip()
-        if not s:
-            return None
-        # Remove code fences like ```json ... ```
-        if s.startswith('```'):
-            s = re.sub(r'^```(?:json)?\s*', '', s, flags=re.IGNORECASE)
-            s = re.sub(r'\s*```$', '', s)
-        # Extract the first JSON object if extra text is present
-        start = s.find('{')
-        end = s.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            s = s[start:end+1]
-        try:
-            return json.loads(s)
-        except Exception:
-            return None
-
     async def reconstruct_relationship(self,relationship:List[str])->List[str]:
         
         query = self.prompt_manager.relationship_reconstraction.format(relationship=relationship)
         json_format = self.prompt_manager.relationship_reconstraction_json
         input_data = {'query':query,'response_format':json_format}
-        last_raw = None
-        # Retry a few times to handle transient bad outputs
-        for attempt in range(3):
-            response = await self.API_request(input_data)
-            last_raw = response
-            parsed = self._coerce_to_json_dict(response)
-            if parsed is None:
-                await asyncio.sleep(0.5 * (attempt + 1))
-                continue
-            src = (parsed.get('source') or '').strip()
-            rel = (parsed.get('relationship') or '').strip()
-            tgt = (parsed.get('target') or '').strip()
-            if all([src, rel, tgt]):
-                return [src, rel, tgt]
-            await asyncio.sleep(0.5 * (attempt + 1))
-        raise ValueError(f"API response could not be parsed as JSON: {last_raw!r}")
+        response = await self.API_request(input_data)
+        return [response.get('source'),response.get('relationship'),response.get('target')]
                 
             
            
@@ -310,10 +266,11 @@ class Graph_pipeline:
         self.save_graph()
         self.indices.store_all_indices(self.config.indices_path)
         self.save_data()
-
-
-
-
-
-
-
+        
+        
+        
+            
+    
+    
+                
+        

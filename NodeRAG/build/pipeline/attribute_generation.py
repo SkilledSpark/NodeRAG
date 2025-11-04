@@ -36,35 +36,21 @@ class NodeImportance:
                 self.important_nodes.append(nodes)
         
     def avarege_degree(self):
-        num_nodes = self.G.number_of_nodes()
-        if num_nodes == 0:
-            return 0
-        average_degree = sum(dict(self.G.degree()).values()) / num_nodes
+        average_degree = sum(dict(self.G.degree()).values())/self.G.number_of_nodes()
         return average_degree
-
+    
     def defult_k(self):
-        num_nodes = self.G.number_of_nodes()
-        if num_nodes == 0:
-            return 1  # fallback to 1 if graph is empty to avoid math errors
-        avg_deg = self.avarege_degree()
-        # Avoid math domain error if avg_deg is 0
-        if avg_deg == 0:
-            return 1
-        k = round(np.log(num_nodes) * (avg_deg ** 0.5))
-        return max(k, 1)
+        k = round(np.log(self.G.number_of_nodes())*self.avarege_degree()**(1/2))
+        return k
     
     def betweenness_centrality(self):
-        num_nodes = self.G.number_of_nodes()
-        if num_nodes == 0:
-            self.betweenness = {}
-            return
-        k = min(10, num_nodes)
-        self.betweenness = nx.betweenness_centrality(self.G, k=k)
-        average_betweenness = sum(self.betweenness.values()) / len(self.betweenness) if self.betweenness else 0
-        scale = round(math.log10(len(self.betweenness))) if self.betweenness else 1
-
+        
+        self.betweenness = nx.betweenness_centrality(self.G,k=10)
+        average_betweenness = sum(self.betweenness.values())/len(self.betweenness)
+        scale = round(math.log10(len(self.betweenness)))
+        
         for node in self.betweenness:
-            if self.betweenness[node] > average_betweenness * scale:
+            if self.betweenness[node] > average_betweenness*scale:
                 if self.G.nodes[node]['type'] == 'entity' and self.G.nodes[node]['weight'] > 1:
                     self.important_nodes.append(node)
                     

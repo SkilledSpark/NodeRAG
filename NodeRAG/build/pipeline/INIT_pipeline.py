@@ -28,21 +28,21 @@ class INIT_pipeline():
             raise ValueError(f'Input folder {self.config.input_folder} does not exist')
         
     def load_files(self):
-        # Recursively search for files in input_folder and subfolders
+        
+        
         if self.config.docu_type == 'mixed':
-            for root, dirs, files in os.walk(self.config.input_folder):
-                for file in files:
-                    if file.endswith('.txt') or file.endswith('.md'):
-                        file_path = os.path.join(root, file)
-                        self.documents_path.append(file_path)
+            for file in os.listdir(self.config.input_folder):
+                if file.endswith('.txt') or file.endswith('.md'):
+                    file_path = os.path.join(self.config.input_folder, file)
+                    self.documents_path.append(file_path)
         else:
-            for root, dirs, files in os.walk(self.config.input_folder):
-                for file in files:
-                    if file.endswith(f'.{self.config.docu_type}'):
-                        file_path = os.path.join(root, file)
-                        self.documents_path.append(file_path)
+            for file in os.listdir(self.config.input_folder):
+                if file.endswith(f'.{self.config.docu_type}'):
+                    file_path = os.path.join(self.config.input_folder, file)
+                    self.documents_path.append(file_path)
+                    
         if len(self.documents_path) == 0:
-            raise ValueError(f'No files found in {self.config.input_folder} or its subfolders')
+            raise ValueError(f'No files found in {self.config.input_folder}')
         
     def check_increment(self):
         if not os.path.exists(self.config.document_hash_path):

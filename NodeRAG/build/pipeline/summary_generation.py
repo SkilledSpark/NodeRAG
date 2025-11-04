@@ -110,15 +110,12 @@ class SummaryGeneration:
    
     async def high_level_element_summary(self):
         results = []
-        # Ensure the summary file exists before reading
-        if not os.path.exists(self.config.summary_path):
-            # Create an empty file if it does not exist
-            with open(self.config.summary_path, 'w', encoding='utf-8') as f:
-                pass
+        
         with open(self.config.summary_path, 'r', encoding='utf-8') as f:
             for line in f:
                 line = json.loads(line)
                 results.append(line)
+                
         All_nodes = []
         self.config.tracker.set(len(results),'High Level Element Summary')
         for result in results:
@@ -152,8 +149,6 @@ class SummaryGeneration:
 
         
         centroids = math.ceil(math.sqrt(len(All_nodes)+len(self.high_level_elements)))
-        if centroids == 0:
-            centroids = 1
         threshold = (len(All_nodes)+len(self.high_level_elements))/centroids
         n=0
         if threshold > self.config.Hcluster_size:
