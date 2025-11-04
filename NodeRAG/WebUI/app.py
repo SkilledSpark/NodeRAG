@@ -1,3 +1,4 @@
+from NodeRAG.utils import LazyImport
 import streamlit as st
 import time
 from typing import List,Tuple
@@ -5,8 +6,6 @@ import yaml
 import os
 import json
 import sys
-
-from NodeRAG.utils import LazyImport
 
 NG = LazyImport('NodeRAG','NodeRag')
 NGSearch = LazyImport('NodeRAG','NodeSearch')
@@ -28,7 +27,7 @@ if 'main_folder' not in st.session_state:
 
 args = sys.argv
 
-
+main_folder = os.path.dirname(__file__)
 config_path = None
 for arg in args:
     if arg.startswith('--main_folder='):
@@ -85,13 +84,13 @@ def display_header():
 
     # Put title in first column
     with col1:
-        st.title('NodeRAG')
+        st.title('UnifiedGraphRAG')
 
     # Put expander in second column
     with col2:
         st.markdown('<div style="margin-top: 26px;"></div>', unsafe_allow_html=True)
-        with st.expander("What is NodeRAG?"):
-            st.write('NodeRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
+        with st.expander("What is UnifiedGraphRAG?"):
+            st.write('UnifiedGraphRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
 
 def display_chat_history():
     """Display the chat history from session state"""
@@ -227,7 +226,7 @@ def sidebar():
             
         if st.button("Build/Update",key="start_building"):
             state_observer = State_Observer(Building)
-            state_observer.reset(total_tasks=["1. Document Processing", "2. Text Processing", "3. Graph Processing", "4. Attribute Processing", "5. Embedding Processing", "6. Summary Processing", "7. HNSW Processing","8. Finished"],desc="Building the NodeRAG")
+            state_observer.reset(total_tasks=["1. Document Processing", "2. Text Processing", "3. Graph Processing", "4. Attribute Processing", "5. Embedding Processing", "6. Summary Processing", "7. HNSW Processing","8. Finished"],desc="Building the UnifiedGraphRAG")
             state_controller = NG(NGConfig(all_config()),web_ui=True)
             state_controller.add_observer(state_observer)
             state_controller.run()

@@ -117,11 +117,12 @@ class document_pipline():
         self.store_text_data()
         self.store_documents_data()
         self.store_readable_index()
-            
         
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
