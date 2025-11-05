@@ -32,7 +32,7 @@ class INIT_pipeline():
         
         if self.config.docu_type == 'mixed':
             for file in os.listdir(self.config.input_folder):
-                if file.endswith('.txt') or file.endswith('.md'):
+                if file.endswith('.txt') or file.endswith('.md') or file.endswith('.pdf'):
                     file_path = os.path.join(self.config.input_folder, file)
                     self.documents_path.append(file_path)
         else:

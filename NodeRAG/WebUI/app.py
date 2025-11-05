@@ -28,13 +28,24 @@ if 'main_folder' not in st.session_state:
 
 args = sys.argv
 
+# Default main folder to user's desired input folder
+DEFAULT_MAIN_FOLDER = 'data'
+main_folder = DEFAULT_MAIN_FOLDER
 
+# Allow override via --main_folder=...
 config_path = None
 for arg in args:
     if arg.startswith('--main_folder='):
         main_folder = arg.split('=')[1]
-st.session_state.original_config_path = os.path.join(main_folder, 'Node_config.yaml')
-st.session_state.web_ui_config_path = os.path.join(main_folder, 'web_ui_config.yaml')
+
+# Use the parent directory of main_folder for config files (if main_folder ends with 'input', use parent)
+if os.path.basename(main_folder.rstrip('/\\')).lower() == 'input':
+    config_base_folder = os.path.dirname(main_folder)
+else:
+    config_base_folder = main_folder
+
+st.session_state.original_config_path = os.path.join(config_base_folder, 'Node_config.yaml')
+st.session_state.web_ui_config_path = os.path.join(config_base_folder, 'web_ui_config.yaml')
 
 
 
@@ -63,6 +74,11 @@ def load_config(path):
         st.session_state.config = all_config['config']
         st.session_state.model_config = all_config['model_config']
         st.session_state.embedding_config = all_config['embedding_config']
+    
+    # Ensure main_folder is set to the default relative path
+    DEFAULT_MAIN_FOLDER = 'data'
+    if 'main_folder' not in st.session_state.config or st.session_state.config['main_folder'] != DEFAULT_MAIN_FOLDER:
+        st.session_state.config['main_folder'] = DEFAULT_MAIN_FOLDER
 
 def all_config():
     """Get all the config from the session state"""
@@ -85,13 +101,13 @@ def display_header():
 
     # Put title in first column
     with col1:
-        st.title('NodeRAG')
+        st.title('UnifiedGraphRAG')
 
     # Put expander in second column
     with col2:
         st.markdown('<div style="margin-top: 26px;"></div>', unsafe_allow_html=True)
-        with st.expander("What is NodeRAG?"):
-            st.write('NodeRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
+        with st.expander("What is UnifiedGraphRAG?"):
+            st.write('UnifiedGraphRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
 
 def display_chat_history():
     """Display the chat history from session state"""
@@ -148,6 +164,23 @@ def display_retrieval_list(relevant_list:List[Tuple[str,str]]):
             """, 
             unsafe_allow_html=True
         )
+        
+def display_image_gallery(image_infos, title: str = "📷 Associated Images", max_images: int = 9):
+    """Render a simple grid gallery for associated images if any."""
+    if not image_infos:
+        return
+    st.markdown(title)
+    cols = st.columns(3)
+    shown = 0
+    for i, img in enumerate(image_infos):
+        if shown >= max_images:
+            break
+        path = img.get('path')
+        caption = ", ".join(img.get('entities', [])) if img.get('entities') else None
+        if path and os.path.exists(path):
+            with cols[i % 3]:
+                st.image(path, use_container_width=True, caption=caption)
+                shown += 1
                         
 def add_message(role: str, user_input: str):
     """Add a message to the chat history"""
@@ -163,13 +196,20 @@ def add_message(role: str, user_input: str):
             # Show retrieval status
             with status_placeholder.status("Retrieving relevant information..."):
                
-        
+                
                 searched = st.session_state.settings['search_engine'].search(user_input)
 
                 # Generate and store relevant info
                 if st.session_state.settings['relevant_info'] == 'On':
                     if searched.retrieved_list is not None:
                         display_retrieval_list(searched.retrieved_list)
+                        # Show associated images if any were linked
+                        try:
+                            if getattr(searched, 'associated_images', None):
+                                display_image_gallery(searched.associated_images)
+                        except Exception as e:
+                            # Don't block the chat if images fail to render
+                            st.caption(f"(Image display skipped: {e})")
             
             # Show generation status
             with status_placeholder.status("Generating response..."):
@@ -290,8 +330,8 @@ def sidebar():
             
             st.session_state.config['docu_type'] = st.selectbox(
                 "Document Type",
-                ["mixed", "md", "txt", "docx"],
-                index=["mixed", "md", "txt", "docx"].index(st.session_state.config['docu_type']),
+                ["mixed", "md", "txt", "docx", "pdf"],
+                index=["mixed", "md", "txt", "docx", "pdf"].index(st.session_state.config.get('docu_type', 'mixed')),
                 help="Type of documents to process"
             )
 
@@ -458,10 +498,11 @@ def sidebar():
             uploaded_files = st.file_uploader(
                 "Upload your documents",
                 accept_multiple_files=True,
-                type=['txt', 'doc', 'docx','md']
+                type=['txt', 'doc', 'docx', 'md', 'pdf']
             )
             
-            input_folder = os.path.join(st.session_state.config['main_folder'], 'input')
+            base_folder = st.session_state.config['main_folder']
+            input_folder = base_folder if os.path.basename(base_folder.rstrip('/\\')).lower() == 'input' else os.path.join(base_folder, 'input')
             if uploaded_files: 
                 if show_confirmation_dialog(f"Are you sure you want to upload file to {input_folder}?"):
                     os.makedirs(input_folder, exist_ok=True)
@@ -574,6 +615,60 @@ def sidebar():
             )
         # Save config button
         st.button("💾 Save Configuration",on_click=reload_search_engine)
+        
+        # MMLongBench Evaluation Section
+        with st.expander("📊 MMLongBench Benchmark", expanded=False):
+            st.markdown("### Run MMLongBench Evaluation")
+            
+            mmlongbench_path = st.text_input(
+                "MMLongBench Path:",
+                value=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'MMLongBench'),
+                help="Path to MMLongBench directory"
+            )
+            
+            if st.button("🚀 Run Evaluation", key="run_mmlongbench"):
+                if not st.session_state.settings.get('engine_running'):
+                    st.error("Please enable the Search Engine first!")
+                else:
+                    try:
+                        from NodeRAG.utils.mmlongbench_eval import load_mmlongbench_samples, run_mmlongbench_evaluation
+                        
+                        samples_path = os.path.join(mmlongbench_path, 'data', 'samples.json')
+                        if not os.path.exists(samples_path):
+                            st.error(f"Samples file not found at {samples_path}")
+                        else:
+                            with st.spinner("Loading MMLongBench samples..."):
+                                samples = load_mmlongbench_samples(samples_path)
+                            st.info(f"Loaded {len(samples)} samples")
+                            
+                            with st.spinner("Running evaluation... This may take a while."):
+                                eval_output_dir = os.path.join(st.session_state.config['main_folder'], 'mmlongbench_results')
+                                results = run_mmlongbench_evaluation(
+                                    st.session_state.settings['search_engine'],
+                                    samples,
+                                    eval_output_dir
+                                )
+                            
+                            st.success("Evaluation completed!")
+                            st.metric("Overall Accuracy", f"{results['accuracy']:.4f}")
+                            st.metric("Overall F1 Score", f"{results['f1']:.4f}")
+                            st.metric("Total Samples", results['total_samples'])
+                            
+                            if 'results_path' in results:
+                                st.info(f"Results saved to: {results['results_path']}")
+                            if 'report_path' in results:
+                                st.info(f"Report saved to: {results['report_path']}")
+                                
+                            # Show report if available
+                            if 'report_path' in results and os.path.exists(results['report_path']):
+                                with open(results['report_path'], 'r') as f:
+                                    report_content = f.read()
+                                st.text_area("Evaluation Report", report_content, height=300)
+                    except Exception as e:
+                        st.error(f"Error running evaluation: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
+            
             
             
 
@@ -606,19 +701,33 @@ def reload_search_engine():
         if st.session_state.main_folder != st.session_state.config['main_folder']:
             st.session_state.main_folder = st.session_state.config['main_folder']
             st.session_state.indices = json.load(open(os.path.join(st.session_state.config['main_folder'], 'info/indices.json'), 'r'))
-            st.session_state.original_config_path = os.path.join(st.session_state.config['main_folder'], 'Node_config.yaml')
-            st.session_state.web_ui_config_path = os.path.join(st.session_state.config['main_folder'], 'web_ui_config.yaml')
+            # Config files should be in parent directory if main_folder ends with 'input'
+            main_folder = st.session_state.config['main_folder']
+            if os.path.basename(main_folder.rstrip('/\\')).lower() == 'input':
+                config_base = os.path.dirname(main_folder)
+            else:
+                config_base = main_folder
+            st.session_state.original_config_path = os.path.join(config_base, 'Node_config.yaml')
+            st.session_state.web_ui_config_path = os.path.join(config_base, 'web_ui_config.yaml')
         return True
     return False
 
 
 # Main chat interface
+DEFAULT_MAIN_FOLDER = 'data'
 if os.path.exists(st.session_state.web_ui_config_path):
     load_config(st.session_state.web_ui_config_path)
 elif os.path.exists(st.session_state.original_config_path):
     load_config(st.session_state.original_config_path)
 else:
-    NGConfig.create_config_file(main_folder)
+    # Create config file with the correct main_folder
+    NGConfig.create_config_file(config_base_folder)
+    # Update the created config file to use the correct main_folder
+    with open(st.session_state.original_config_path, 'r') as f:
+        config_data = yaml.safe_load(f)
+    config_data['config']['main_folder'] = DEFAULT_MAIN_FOLDER
+    with open(st.session_state.original_config_path, 'w') as f:
+        yaml.dump(config_data, f)
     load_config(st.session_state.original_config_path)
 display_header()
 sidebar()

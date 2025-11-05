@@ -17,6 +17,8 @@ class Retrieval():
         self._retrieved_list = None
         self._structured_prompt = None
         self._unstructured_prompt = None
+        self.associated_images = []
+        self._entity_images = None
         
         
         
@@ -75,6 +77,39 @@ class Retrieval():
             prompt += '\n\n'
         return prompt
     
+    def add_image_association(self, image_path: str, description: str = None, entities: list = None) -> None:
+        """Add an image association to the retrieval results"""
+        image_info = {
+            'path': image_path,
+            'description': description,
+            'entities': entities or []
+        }
+        self.associated_images.append(image_info)
+    
+    @property
+    def entity_images(self) -> dict:
+        """Get images organized by entity"""
+        if self._entity_images is None:
+            self._entity_images = {}
+            for img in self.associated_images:
+                for entity in img.get('entities', []):
+                    if entity not in self._entity_images:
+                        self._entity_images[entity] = []
+                    self._entity_images[entity].append(img)
+        return self._entity_images
+    
+    def get_images_for_query(self, query_entities: list = None) -> list:
+        """Get relevant images based on query entities"""
+        if not query_entities:
+            return self.associated_images
+        
+        relevant_images = []
+        for img in self.associated_images:
+            img_entities = [e.lower() for e in img.get('entities', [])]
+            if any(entity.lower() in img_entities for entity in query_entities):
+                relevant_images.append(img)
+        return relevant_images
+    
     def __str__(self):
         return self.retrieval_info
     
@@ -86,6 +121,7 @@ class Answer():
         self.query = query
         self.retrieval = retrieval
         self.response = None
+        self._relevant_images = None
         
     @property
     def retrieval_info(self):
@@ -106,6 +142,46 @@ class Answer():
     @property
     def response_tokens(self):
         return self.retrieval.config.token_counter(self.response)
+    
+    @property
+    def relevant_images(self) -> list:
+        """Get images relevant to the query"""
+        if self._relevant_images is None:
+            # Extract entities from query for image matching
+            query_entities = self._extract_entities_from_query()
+            self._relevant_images = self.retrieval.get_images_for_query(query_entities)
+        return self._relevant_images
+    
+    def _extract_entities_from_query(self) -> list:
+        """Extract potential entities from the query for image matching"""
+        # Simple entity extraction - can be enhanced with NER
+        import re
+        # Look for capitalized words that might be entities
+        entities = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', self.query)
+        return entities
+    
+    def get_images_info(self) -> str:
+        """Get formatted information about relevant images"""
+        if not self.relevant_images:
+            return ""
+        
+        images_info = "\n\n------------RELATED IMAGES-------------\n"
+        for i, img in enumerate(self.relevant_images, 1):
+            images_info += f"{i}. Image: {img['path']}\n"
+            if img.get('description'):
+                images_info += f"   Description: {img['description']}\n"
+            if img.get('entities'):
+                images_info += f"   Related to: {', '.join(img['entities'])}\n"
+            images_info += "\n"
+        return images_info
+    
+    def get_full_response_with_images(self) -> dict:
+        """Get response with both text and image information"""
+        return {
+            'text_response': self.response,
+            'images': self.relevant_images,
+            'images_info': self.get_images_info()
+        }
     
     def __str__(self):
         return self.response

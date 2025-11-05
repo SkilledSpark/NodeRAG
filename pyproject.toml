@@ -66,6 +66,7 @@ dependencies = [
     "prompt-toolkit==3.0.50",
     "propcache==0.3.0",
     "protobuf==5.29.3",
+    "pymupdf>=1.23.0",  # PyMuPDF for PDF processing
     "pure-eval==0.2.3",
     "pyarrow==19.0.1",
     "pydantic==2.10.6",

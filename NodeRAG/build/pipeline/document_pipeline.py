@@ -19,6 +19,14 @@ class document_pipline():
         self._hash_ids = None
         self._human_readable_id = None
         
+        # Initialize PDF extractor if needed
+        self.pdf_extractor = None
+        try:
+            from ...utils.pdf_extractor import PDFExtractor
+            images_dir = os.path.join(self.config.main_folder, 'images')
+            self.pdf_extractor = PDFExtractor(images_dir)
+        except Exception as e:
+            self.config.console.print(f'[yellow]Warning: PDF extractor not available: {e}[/yellow]')
         
     def integrity_check(self):
         if not os.path.exists(self.config.cache):
@@ -37,9 +45,29 @@ class document_pipline():
         if self._documents is None:
             self._documents = []
             for path in self.documents_path:
-                with open(path, 'r', encoding='utf-8') as f:
-                    raw_context = f.read()
-                self._documents.append(document(raw_context,path,self.config.semantic_text_splitter))
+                # Check if it's a PDF file
+                if path.lower().endswith('.pdf'):
+                    if self.pdf_extractor:
+                        try:
+                            extracted_data = self.pdf_extractor.extract(path)
+                            raw_context = extracted_data['text']
+                            # Store image references in document metadata
+                            image_refs = extracted_data.get('images', [])
+                        except Exception as e:
+                            self.config.console.print(f'[red]Error extracting PDF {path}: {e}[/red]')
+                            raw_context = f"Error extracting PDF: {e}"
+                            image_refs = []
+                        doc = document(raw_context, path, self.config.semantic_text_splitter)
+                        doc.image_references = image_refs  # Store image references
+                        self._documents.append(doc)
+                    else:
+                        # Fallback: just read as text (won't work well but prevents crash)
+                        self.config.console.print(f'[yellow]PDF extractor not available, skipping PDF: {path}[/yellow]')
+                else:
+                    # Regular text file
+                    with open(path, 'r', encoding='utf-8') as f:
+                        raw_context = f.read()
+                    self._documents.append(document(raw_context,path,self.config.semantic_text_splitter))
         return self._documents
     
     @property
@@ -72,14 +100,28 @@ class document_pipline():
         self.config.tracker.set(len(self.documents),desc="Processing text")
         for doc in self.documents:
             doc.split()
-            for text in doc.text_units:
-                text_list.append({'text_id':text.human_readable_id,
-                                'hash_id':text.hash_id,
-                                'type':'text',
-                                'context':text.raw_context,
-                                'doc_id':doc.human_readable_id,
-                                'doc_hash_id':doc.hash_id,
-                                'embedding':None,})
+            # Get image references for this document
+            image_refs = getattr(doc, 'image_references', [])
+            image_refs_dict = {img.get('page', 0): img.get('path', '') for img in image_refs}
+            
+            for idx, text in enumerate(doc.text_units):
+                # Try to associate images with text segments
+                associated_images = []
+                # Simple heuristic: associate images from same page
+                # In practice, you'd want more sophisticated matching
+                for img_ref in image_refs:
+                    if img_ref.get('page', 0) > 0:  # If page info available
+                        associated_images.append(img_ref.get('path', ''))
+                
+                text_entry = {'text_id':text.human_readable_id,
+                            'hash_id':text.hash_id,
+                            'type':'text',
+                            'context':text.raw_context,
+                            'doc_id':doc.human_readable_id,
+                            'doc_hash_id':doc.hash_id,
+                            'embedding':None,
+                            'image_references': json.dumps(associated_images) if associated_images else None}
+                text_list.append(text_entry)
             self.config.tracker.update()
         self.config.tracker.close()
         storage(text_list).save_parquet(self.config.text_path,append= os.path.exists(self.config.text_path))

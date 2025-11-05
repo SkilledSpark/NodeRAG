@@ -53,10 +53,19 @@ class NodeConfig():
         if self.main_folder is None:
             raise ValueError('main_folder is not set')
         
+        # Convert to absolute path if relative (resolve from project root)
+        if not os.path.isabs(self.main_folder):
+            project_root = self._get_project_root()
+            self.main_folder = os.path.abspath(os.path.join(project_root, self.main_folder))
+        
         if not os.path.exists(self.main_folder):
             raise ValueError(f'main_folder {self.main_folder} does not exist')
         
-        self.input_folder = self.main_folder + '/input'
+        # If main_folder already points to an 'input' directory, use it directly; otherwise append '/input'
+        if os.path.basename(self.main_folder.rstrip('/\\')).lower() == 'input':
+            self.input_folder = self.main_folder
+        else:
+            self.input_folder = self.main_folder + '/input'
         self.cache = self.main_folder + '/cache'
         self.info = self.main_folder + '/info'
         
@@ -101,6 +110,11 @@ class NodeConfig():
         self.ppr_alpha = self.config.get('ppr_alpha',0.5)
         self.ppr_max_iter = self.config.get('ppr_max_iter',8)
         self.unbalance_adjust = self.config.get('unbalance_adjust',False)
+        
+        # Image processing settings
+        self.enable_images = self.config.get('enable_images', True)
+        self.max_images_per_entity = self.config.get('max_images_per_entity', 1)
+        self.entity_image_proximity_threshold = self.config.get('entity_image_proximity_threshold', None)
         
         
         self.indices_path = self.info + '/indices.json'
@@ -207,6 +221,14 @@ class NodeConfig():
                                   attribute_index_counter,
                                   community_summary_index_counter,
                                   high_level_element_index_counter],self.console)
+    
+    def _get_project_root(self) -> str:
+        """Get the project root directory (where NodeRAG package is located)"""
+        # Start from this file's directory and walk up to find the project root
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Go up two levels from NodeRAG/config/ to get to project root
+        project_root = os.path.dirname(os.path.dirname(current_dir))
+        return project_root
         
         
     def store_readable_index(self) -> None:

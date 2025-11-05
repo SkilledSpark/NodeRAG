@@ -4,7 +4,7 @@
 model_config:
   service_provider: openai            # AI service provider (e.g., openai, gemini)
   model_name: gpt-4o-mini            # Model name for text generation
-  api_keys: ~  # Your API key (optional)
+  api_keys: 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
   temperature: 0                # Temperature parameter for text generation
   max_tokens: 10000                  # Maximum tokens to generate
   rate_limit: 40                      # API rate limit (requests per second)
@@ -12,7 +12,7 @@ model_config:
 embedding_config:
   service_provider: openai_embedding  # Embedding service provider
   embedding_model_name: text-embedding-3-small  # Model name for text embeddings
-  api_keys: ~  # Your API key (optional)
+  api_keys: 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
   rate_limit: 20                      # Rate limit for embedding requests
 
 
@@ -21,7 +21,7 @@ embedding_config:
 #==============================================================================
 config:
   # Basic Settings
-  main_folder: ~  # Root folder for document processing
+  main_folder: data  # Root folder for document processing (relative to project root)
   language: English                  # Document processing language
   docu_type: mixed                   # Document type (mixed, pdf, txt, etc.)
   
@@ -30,14 +30,14 @@ config:
   embedding_batch_size: 50           # Batch size for embedding processing
   
   # UI Settings
-  use_tqdm: False                    # Enable/disable progress bars
+  use_tqdm: True                    # Enable/disable progress bars
   use_rich: True                     # Enable/disable rich text formatting
   
   # HNSW Index Settings
   space: l2                         # Distance metric for HNSW (l2, cosine)
   dim: 1536                         # Embedding dimension (must match embedding model)
-  m: 50                             # Number of connections per layer in HNSW
-  ef: 200                           # Size of dynamic candidate list in HNSW
+  m: 64                             # Number of connections per layer in HNSW
+  ef: 400                           # Size of dynamic candidate list in HNSW
   m0: ~                             # Number of bi-directional links in HNSW
   
   # Summary Settings
@@ -56,3 +56,11 @@ config:
   accuracy_weight: 1                # Weight for accuracy in personalized PageRank
   ppr_alpha: 0.5                    # Damping factor for personalized PageRank
   ppr_max_iter: 2                   # Maximum iterations for personalized PageRank
+  
+  # Image Processing Settings
+  enable_images: True               # Enable/disable image processing and retrieval
+  image_directory: ~                # Directory containing images (optional)
+  max_images_per_query: 5           # Maximum number of images to return per query
+  max_images_per_entity: 1          # Maximum number of nearest images to link per entity (default: 1 - only the closest)
+  entity_image_proximity_threshold: ~  # Optional max distance (page units) for entity-image linking; if null, always link nearest
+  image_extensions: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.ico']  # Supported image formats

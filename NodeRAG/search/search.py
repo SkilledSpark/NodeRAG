@@ -28,6 +28,18 @@ class NodeSearch():
         self.id_to_text,self.accurate_id_to_text = self.mapper.generate_id_to_text(['entity','high_level_element_title'])
         self.sparse_PPR = sparse_PPR(self.G)
         self._semantic_units = None
+        self.image_registry = {}  # Registry to store image associations
+        # Load image associations from mappings and directories if enabled
+        if getattr(self.config, 'enable_images', True):
+            try:
+                self._load_entity_image_mappings()
+                # Also scan image directories to maximize recall (optional)
+                base_dir = self._get_base_data_dir()
+                extracted_dir = os.path.join(base_dir, 'extracted_images')
+                self.load_images_from_directory(extracted_dir)
+            except Exception as e:
+                # Non-fatal: image loading shouldn't break search
+                print(f"[ImageLoader] Warning: failed to load images: {e}")
             
         
     def load_mapper(self) -> Mapper:
@@ -100,6 +112,9 @@ class NodeSearch():
         weighted_nodes = self.graph_search(personlization)
         
         retrieval = self.post_process_top_k(weighted_nodes,retrieval)
+        
+        # Add image associations to retrieval
+        self.add_images_to_retrieval(retrieval, decomposed_entities)
 
         return retrieval
 
@@ -168,6 +183,66 @@ class NodeSearch():
         response = self.config.API_client.stream_chat({'query':query})
         yield from response
 
+    # -------- Images: load + normalize paths --------
+
+    def _get_base_data_dir(self) -> str:
+        """Return the base data directory (parent of 'input' if main_folder points to it)."""
+        mf = self.config.main_folder  # absolute
+        if os.path.basename(mf.rstrip('/\\')).lower() == 'input':
+            return os.path.dirname(mf)
+        return mf
+
+    def _normalize_image_path(self, relative_or_abs_path: str) -> str:
+        """Resolve image path to an absolute existing path when possible.
+
+        Accepts values like '<pdf_stem>/images/file.jpeg' and returns
+        '<base>/extracted_images/<pdf_stem>/images/file.jpeg' if that exists.
+        """
+        p = relative_or_abs_path.replace('\\', os.sep).replace('/', os.sep)
+        # Quick fix for accidental 'images/images'
+        p = p.replace(os.sep + 'images' + os.sep + 'images' + os.sep, os.sep + 'images' + os.sep)
+
+        if os.path.isabs(p) and os.path.exists(p):
+            return p
+
+        base_dir = self._get_base_data_dir()
+        candidates = [
+            os.path.join(base_dir, 'extracted_images', p),
+            os.path.join(base_dir, p),  # in case mapping already included 'extracted_images/...'
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                return c
+        # Fallback: return first candidate (absolute) even if missing, UI may handle missing gracefully
+        return candidates[0]
+
+    def _load_entity_image_mappings(self) -> None:
+        """Load entity->images mapping JSONs and register images in the registry."""
+        base_dir = self._get_base_data_dir()
+        mappings_dir = os.path.join(base_dir, 'entity_image_mappings')
+        if not os.path.exists(mappings_dir):
+            return
+
+        try:
+            from pathlib import Path
+            for mp in Path(mappings_dir).glob('*.json'):
+                try:
+                    import json
+                    with open(mp, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    for key, val in data.items():
+                        name = val.get('name') or key
+                        label = val.get('label')
+                        images = val.get('images') or []
+                        norm_paths = [self._normalize_image_path(ip) for ip in images]
+                        # Register each image with the entity
+                        for ip in norm_paths:
+                            self.register_image(ip, description=f"{label or 'entity'} image", entities=[name])
+                except Exception as e:
+                    print(f"[ImageLoader] Skipped mapping {mp.name}: {e}")
+        except Exception as e:
+            print(f"[ImageLoader] Failed scanning mappings: {e}")
+
 
     def graph_search(self,personlization:Dict[str,float])->List[Tuple[str,str]]|List[str]:
         
@@ -235,4 +310,80 @@ class NodeSearch():
         
         return retrieval
     
+    def register_image(self, image_path: str, description: str = None, entities: list = None, document_id: str = None) -> None:
+        """Register an image with associated entities and metadata"""
+        image_info = {
+            'path': image_path,
+            'description': description,
+            'entities': entities or [],
+            'document_id': document_id
+        }
+        
+        # Store by image path
+        self.image_registry[image_path] = image_info
+        
+        # Also index by entities for quick lookup
+        for entity in entities or []:
+            entity_key = f"entity:{entity.lower()}"
+            if entity_key not in self.image_registry:
+                self.image_registry[entity_key] = []
+            self.image_registry[entity_key].append(image_info)
     
+    def add_images_to_retrieval(self, retrieval: Retrieval, query_entities: list) -> None:
+        """Add relevant images to the retrieval results"""
+        # Find images associated with query entities
+        for entity in query_entities:
+            entity_key = f"entity:{entity.lower()}"
+            if entity_key in self.image_registry:
+                for image_info in self.image_registry[entity_key]:
+                    retrieval.add_image_association(
+                        image_info['path'],
+                        image_info['description'],
+                        image_info['entities']
+                    )
+        
+        # Also check retrieved entities for image associations
+        for node_id in retrieval.search_list:
+            node_text = self.id_to_text.get(node_id, "")
+            node_type = self.id_to_type.get(node_id, "")
+            
+            if node_type == 'entity':
+                # Extract entity name from text for image lookup
+                entity_name = node_text.split(':')[0] if ':' in node_text else node_text
+                entity_key = f"entity:{entity_name.lower()}"
+                if entity_key in self.image_registry:
+                    for image_info in self.image_registry[entity_key]:
+                        retrieval.add_image_association(
+                            image_info['path'],
+                            image_info['description'],
+                            image_info['entities']
+                        )
+    
+    def load_images_from_directory(self, directory_path: str, entity_mapping: dict = None) -> None:
+        """Load images from a directory and associate them with entities"""
+        import os
+        from pathlib import Path
+        
+        if not os.path.exists(directory_path):
+            return
+        
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.tiff', '.ico'}
+        
+        for file_path in Path(directory_path).rglob('*'):
+            if file_path.suffix.lower() in image_extensions:
+                # Extract potential entity names from filename
+                filename = file_path.stem
+                entities = []
+                
+                if entity_mapping and filename in entity_mapping:
+                    entities = entity_mapping[filename]
+                else:
+                    # Simple heuristic: split by common separators and capitalize
+                    potential_entities = re.split(r'[_\-\s]+', filename)
+                    entities = [entity.title() for entity in potential_entities if len(entity) > 2]
+                
+                self.register_image(
+                    str(file_path),
+                    f"Image of {', '.join(entities)}" if entities else f"Image: {filename}",
+                    entities
+                )
