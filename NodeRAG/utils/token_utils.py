@@ -3,11 +3,7 @@ from typing import Protocol, List
 # from transformers import AutoTokenizer
 
 class token_counter(Protocol):
-    
-    def __init__(self,model_name:str):
-        self.model_name = model_name
-    
-    def __call__(self, text:str) -> int:
+    def __call__(self, text: str) -> int:
         ...
     
 class tiktoken_counter(token_counter):
@@ -18,7 +14,14 @@ class tiktoken_counter(token_counter):
     
 
     def encode(self, text:str) -> List[int]:
-        return self.tokenizer.encode(text)
+        # Allow all special tokens in the raw text to be encoded as normal text
+        # to avoid tiktoken raising errors for strings like '<|endoftext|>'.
+        try:
+            return self.tokenizer.encode(text, disallowed_special=())
+        except Exception:
+            # Fallback: strip the most common special token markers and retry
+            cleaned = text.replace('<|endoftext|>', ' ')
+            return self.tokenizer.encode(cleaned, disallowed_special=())
     
     def token_limit(self, text:str) -> bool:
                 

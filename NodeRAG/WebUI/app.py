@@ -5,6 +5,7 @@ import yaml
 import os
 import json
 import sys
+import pickle
 
 from NodeRAG.utils import LazyImport
 
@@ -290,19 +291,15 @@ def sidebar():
 
             else:
                 pass
-            
-        if 'Enable_Search' in locals() and Enable_Search:
+        
+        if st.session_state.settings.get('engine_running'):
             with st.expander("📑 Available Indices", expanded=False):
                 if st.session_state.indices:
                     for key, value in st.session_state.indices.items():
                         st.markdown(f"**{key.replace('_',' ')}**: {value}")
                 else:
                     st.markdown("No indices available")
-            
-            
-            
-            
-                
+        
         st.title("Settings")
         
         # Get current working directory as default folder
@@ -614,7 +611,10 @@ def sidebar():
                 help="Weight for accuracy"
             )
         # Save config button
-        st.button("💾 Save Configuration",on_click=reload_search_engine)
+        def _on_save_config_click():
+            # Trigger reload; ignore return value to satisfy callback signature
+            reload_search_engine()
+        st.button("💾 Save Configuration", on_click=_on_save_config_click)
         
         # MMLongBench Evaluation Section
         with st.expander("📊 MMLongBench Benchmark", expanded=False):
@@ -731,5 +731,184 @@ else:
     load_config(st.session_state.original_config_path)
 display_header()
 sidebar()
-display_chat_history()
-handle_user_input()
+
+def graph_visualization():
+    """Visualize the processed graph using networkx (simple layout)."""
+    base_folder = st.session_state.config['main_folder']
+    graph_path = os.path.join(base_folder, 'cache', 'graph.pkl')
+    st.subheader("Graph visualization")
+    if not os.path.exists(graph_path):
+        st.info(f"Graph file not found at {graph_path}. Build the graph first from the sidebar.")
+        return
+    # Load the graph
+    try:
+        with open(graph_path, 'rb') as f:
+            G = pickle.load(f)
+    except Exception as e:
+        st.error(f"Failed to load graph: {e}")
+        return
+    try:
+        import networkx as nx  # type: ignore
+        import matplotlib.pyplot as plt  # type: ignore
+    except Exception:
+        st.info("Install 'networkx' and 'matplotlib' to view the graph.")
+        return
+    # Controls
+    max_nodes = st.slider("Max nodes to display", min_value=50, max_value=2000, value=300, step=50)
+    show_labels = st.checkbox("Show labels", value=False)
+    show_entity_names = st.checkbox("Show entity/text on hover", value=True)
+    # Subgraph selection by highest degree
+    try:
+        degrees = dict(G.degree())
+        top_nodes = sorted(degrees.keys(), key=lambda n: degrees[n], reverse=True)[:max_nodes]
+        H = G.subgraph(top_nodes).copy()
+    except Exception:
+        # Fallback to slicing if degree not available
+        nodes = list(G.nodes())[:max_nodes]
+        H = G.subgraph(nodes).copy()
+    # Optionally load id->text mapping for hover tooltips
+    id_to_text = {}
+    if show_entity_names:
+        try:
+            cache_dir = os.path.join(base_folder, 'cache')
+            mapping_candidates = [
+                os.path.join(cache_dir, 'semantic_units.parquet'),
+                os.path.join(cache_dir, 'entities.parquet'),
+                os.path.join(cache_dir, 'relationship.parquet'),
+                os.path.join(cache_dir, 'attributes.parquet'),
+                os.path.join(cache_dir, 'high_level_elements.parquet'),
+                os.path.join(cache_dir, 'text.parquet'),
+                os.path.join(cache_dir, 'high_level_elements_titles.parquet'),
+            ]
+            mapping_list = [p for p in mapping_candidates if os.path.exists(p)]
+            if mapping_list:
+                from NodeRAG.storage.graph_mapping import Mapper
+                mapper = Mapper(mapping_list)
+                # returns (id_to_text, accurate_id_to_text, relationships?) in this codebase
+                gen_result = mapper.generate_id_to_text(['entity','high_level_element_title'])
+                if isinstance(gen_result, tuple) and len(gen_result) >= 1:
+                    id_to_text = gen_result[0] or {}
+        except Exception:
+            id_to_text = {}
+
+    # Color by node type
+    type_colors = {
+        'entity': '#1f77b4',
+        'relationship': '#ff7f0e',
+        'high_level_element_title': '#2ca02c',
+        'attribute': '#9467bd',
+    }
+    def node_color(n):
+        return type_colors.get(H.nodes[n].get('type', 'other'), '#aaaaaa')
+
+    # Try interactive PyVis first (zoom/pan)
+    try:
+        from pyvis.network import Network  # type: ignore
+        import streamlit.components.v1 as components
+        net = Network(height="750px", width="100%", bgcolor="#ffffff")
+        net.barnes_hut()
+        # Add nodes
+        for n in H.nodes():
+            title = id_to_text.get(n, str(n)) if show_entity_names else None
+            net.add_node(str(n), label=(str(n) if show_labels else ""), color=node_color(n), title=title)
+        # Add edges
+        for u, v in H.edges():
+            net.add_edge(str(u), str(v))
+        # Enable zoom and drag interactions
+        net.set_options('''
+        var options = {
+          "interaction": {"zoomView": true, "dragView": true},
+          "physics": {"stabilization": true}
+        };
+        ''')
+        # Render to HTML and embed
+        import tempfile
+        import os as _os
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
+            try:
+                net.write_html(tmp.name)
+            except Exception:
+                net.show(tmp.name)
+            html_str = open(tmp.name, 'r', encoding='utf-8').read()
+        try:
+            _os.unlink(tmp.name)
+        except Exception:
+            pass
+        components.html(html_str, height=780, scrolling=True)
+        return
+    except Exception:
+        pass
+
+    # Fallback to Plotly (also interactive with zoom/pan)
+    try:
+        import plotly.graph_objects as go  # type: ignore
+        import networkx as nx  # type: ignore
+        try:
+            pos = nx.spring_layout(H, seed=42)
+        except Exception:
+            pos = nx.random_layout(H)
+        # Edges
+        edge_x = []
+        edge_y = []
+        for u, v in H.edges():
+            x0, y0 = pos[u]
+            x1, y1 = pos[v]
+            edge_x += [x0, x1, None]
+            edge_y += [y0, y1, None]
+        edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color='#888'), mode='lines', hoverinfo='none')
+        # Nodes
+        node_x = []
+        node_y = []
+        node_text = []
+        node_hover = []
+        node_color_vals = []
+        for n in H.nodes():
+            x, y = pos[n]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(str(n))
+            node_hover.append(id_to_text.get(n, str(n)) if show_entity_names else str(n))
+            node_color_vals.append(node_color(n))
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text' if show_labels else 'markers',
+            text=node_text if show_labels else None,
+            textposition='top center',
+            marker=dict(size=8, color=node_color_vals),
+            hovertext=node_hover,
+            hoverinfo='text'
+        )
+        fig = go.Figure(data=[edge_trace, node_trace])
+        fig.update_layout(showlegend=False, hovermode='closest', margin=dict(b=10, l=10, r=10, t=10))
+        fig.update_xaxes(visible=False)
+        fig.update_yaxes(visible=False)
+        st.plotly_chart(fig, use_container_width=True)
+        return
+    except Exception:
+        pass
+
+    # Final fallback: static matplotlib
+    try:
+        import networkx as nx  # type: ignore
+        import matplotlib.pyplot as plt  # type: ignore
+        try:
+            pos = nx.spring_layout(H, seed=42)
+        except Exception:
+            pos = nx.random_layout(H)
+        fig, ax = plt.subplots(figsize=(10, 8))
+        nx.draw_networkx_edges(H, pos, ax=ax, alpha=0.25)
+        nx.draw_networkx_nodes(H, pos, node_color=[node_color(n) for n in H.nodes()], node_size=50, ax=ax)
+        if show_labels:
+            labels = {n: str(n) for n in H.nodes()}
+            nx.draw_networkx_labels(H, pos, labels=labels, font_size=6, ax=ax)
+        ax.axis('off')
+        st.pyplot(fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Graph rendering failed: {e}")
+
+tab_chat, tab_graph = st.tabs(["💬 Chat", "🕸️ Graph"])
+with tab_chat:
+    display_chat_history()
+    handle_user_input()
+with tab_graph:
+    graph_visualization()
