@@ -256,6 +256,28 @@ class NodeRag():
             await self.state_transition()  
     
     def run(self):
-        asyncio.run(self._run_async())
+        # Create new event loop to avoid conflicts with Streamlit
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._run_async())
+        finally:
+            # Clean up pending tasks to prevent "Event loop is closed" errors
+            try:
+                # Cancel all pending tasks
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                # Wait for task cancellation
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                # Shutdown async generators
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                # Shutdown default executor
+                loop.run_until_complete(loop.shutdown_default_executor())
+            except Exception:
+                pass
+            finally:
+                loop.close()
         
         

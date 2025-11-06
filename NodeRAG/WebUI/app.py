@@ -639,35 +639,57 @@ def sidebar():
                         else:
                             with st.spinner("Loading MMLongBench samples..."):
                                 samples = load_mmlongbench_samples(samples_path)
-                            st.info(f"Loaded {len(samples)} samples")
+                            st.success(f"✓ Loaded {len(samples)} samples")
                             
-                            with st.spinner("Running evaluation... This may take a while."):
-                                eval_output_dir = os.path.join(st.session_state.config['main_folder'], 'mmlongbench_results')
-                                results = run_mmlongbench_evaluation(
-                                    st.session_state.settings['search_engine'],
-                                    samples,
-                                    eval_output_dir
-                                )
+                            st.info("⏳ Running evaluation... Progress will be shown in the terminal. This will take a while!")
+                            st.warning("💡 **Tip**: Check your terminal/console to see real-time progress")
                             
-                            st.success("Evaluation completed!")
-                            st.metric("Overall Accuracy", f"{results['accuracy']:.4f}")
-                            st.metric("Overall F1 Score", f"{results['f1']:.4f}")
-                            st.metric("Total Samples", results['total_samples'])
+                            # Use a container to show status
+                            status_container = st.empty()
+                            
+                            eval_output_dir = os.path.join(st.session_state.config['main_folder'], 'mmlongbench_results')
+                            
+                            # Run evaluation with progress updates
+                            with status_container.container():
+                                st.write("🔄 Evaluation in progress...")
+                                st.write("Check terminal for detailed progress")
+                            
+                            results = run_mmlongbench_evaluation(
+                                st.session_state.settings['search_engine'],
+                                samples,
+                                eval_output_dir
+                            )
+                            
+                            # Clear status
+                            status_container.empty()
+                            
+                            st.success("✅ Evaluation completed!")
+                            
+                            # Display results in columns
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Overall Accuracy", f"{results['accuracy']:.4f}")
+                            with col2:
+                                st.metric("Overall F1 Score", f"{results['f1']:.4f}")
+                            with col3:
+                                st.metric("Total Samples", results['total_samples'])
                             
                             if 'results_path' in results:
-                                st.info(f"Results saved to: {results['results_path']}")
+                                st.info(f"📁 Results saved to: {results['results_path']}")
                             if 'report_path' in results:
-                                st.info(f"Report saved to: {results['report_path']}")
+                                st.info(f"📄 Report saved to: {results['report_path']}")
                                 
                             # Show report if available
                             if 'report_path' in results and os.path.exists(results['report_path']):
-                                with open(results['report_path'], 'r') as f:
-                                    report_content = f.read()
-                                st.text_area("Evaluation Report", report_content, height=300)
+                                with st.expander("📊 View Detailed Report"):
+                                    with open(results['report_path'], 'r') as f:
+                                        report_content = f.read()
+                                    st.text_area("Evaluation Report", report_content, height=300)
                     except Exception as e:
-                        st.error(f"Error running evaluation: {str(e)}")
+                        st.error(f"❌ Error running evaluation: {str(e)}")
                         import traceback
-                        st.code(traceback.format_exc())
+                        with st.expander("🔍 View Error Details"):
+                            st.code(traceback.format_exc())
             
             
             

@@ -73,6 +73,23 @@ uv pip install NodeRAG
 ### Next
 > For indexing and answering processes, please refer to our website: [Indexing](https://terry-xu-666.github.io/NodeRAG_web/docs/indexing/) and [Answering](https://terry-xu-666.github.io/NodeRAG_web/docs/answer/)
 
+### 🔄 System Reset
+
+If you need to completely reset your NodeRAG system (clear all indices, graphs, and cached data), use the reset utility:
+
+```bash
+# Interactive reset with confirmation
+python -m NodeRAG.utils.reset_system -f /path/to/data
+
+# Reset without confirmation prompt
+python -m NodeRAG.utils.reset_system -f /path/to/data --yes
+
+# Preview what would be deleted without actually deleting
+python -m NodeRAG.utils.reset_system -f /path/to/data --dry-run
+```
+
+For detailed information, see [RESET_SYSTEM.md](./RESET_SYSTEM.md).
+
 
 ## ✨ Features
 

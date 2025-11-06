@@ -1,0 +1,42 @@
+{
+  "timestamp": "20251105_212511",
+  "total_samples": 3,
+  "completed_samples": 3,
+  "config_path": "C:\\Users\\Lakshya\\OneDrive\\Documents\\GraphRAG\\NodeRAG\\NodeRAG\\data\\Node_config.yaml",
+  "samples_path": "C:\\Users\\Lakshya\\OneDrive\\Documents\\GraphRAG\\NodeRAG\\NodeRAG\\MMLongBench\\data\\samples.json",
+  "results": [
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, how do 5% of the Latinos see economic upward mobility for their children?",
+      "ground_truth": "Less well-off",
+      "analysis": "According to the report, 72% of Latino adults expect that their children will be better off financially than they themselves are currently. This suggests a strong belief in economic upward mobility among the majority of Latinos. However, you mentioned \"5%\" in your query, which might be a misunderstanding, as the report indicates that this belief is held by a significant majority. \n\nThe optimism about their children's financial prospects is noteworthy across different demographics within the Latino community, including immigrant and U.S.-born individuals. Specifically, 75% of immigrant adults and 70% of U.S.-born adults share the expectation that their children will enjoy better financial circumstances. This belief reflects a hopeful outlook on the potential for improved economic conditions and opportunities for future generations. \n\nOverall, the predominant sentiment among the Latino population is one of optimism regarding their children's upward economic mobility, highlighting a key aspect of their perspective on the future. If there is a specific detail or aspect related to the 5% you were referring to, please clarify for further assistance.",
+      "prediction": "Extracted answer: Not answerable\nAnswer format: String",
+      "answer_format": "Str",
+      "evidence_pages": "[5]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, which one is greater in population in the survey? Foreign born Latinos, or the Latinos interviewed by cellphone?",
+      "ground_truth": "Latinos interviewed by cellphone",
+      "analysis": "Based on the retrieved information, the total number of foreign-born Latinos surveyed in the National Survey of Latinos was 795 individuals, while the report indicates that 1,051 Latino respondents were interviewed via cellphone. Therefore, the population of Latinos interviewed by cellphone (1,051) is greater than that of foreign-born Latinos (795).\n\nIn summary, when comparing the two populations, cell phone respondents outnumber the foreign-born Latinos in the surveyed sample, indicating a significant representation of Latinos interviewed through cellphones in this specific survey.",
+      "prediction": "Extracted answer: 'Latinos interviewed by cellphone'\nAnswer format: String",
+      "answer_format": "Str",
+      "evidence_pages": "[19, 20]",
+      "evidence_sources": "['Table']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "From this report, which subgroup among Hispanics has gained most confidence from 2008 to 2015? ",
+      "ground_truth": "Some college or more",
+      "analysis": "According to the report, the subgroup among Hispanics that has gained the most confidence from 2008 to 2015 is individuals who have completed some college education or more. Specifically, this group demonstrated an increase in financial optimism, with 85% of college-educated Latinos expecting improvements in their financial situation for the coming year, reflecting a significant gain of 20 percentage points since 2008. This increase in confidence is highlighted as part of a broader trend where economically disadvantaged groups have been recovering from the impacts of the Great Recession more slowly compared to those with higher education levels. \n\nAdditionally, the survey indicated that overall, the financial expectations of Latinos are more optimistic now than they were in 2008, signaling a positive trend in financial outlook across various subgroups. However, the most notable increase in confidence was specifically among those with at least some college experience.",
+      "prediction": "Extracted answer: 'Individuals who have completed some college education or more'\nAnswer format: String",
+      "answer_format": "Str",
+      "evidence_pages": "[14]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    }
+  ]
+}

@@ -177,10 +177,54 @@ class NodeSearch():
         return ans
         
     
-    def stream_answer(self,query:str,retrieved_info:str):
+    def stream_answer(self, query: str, retrieved_info: str, system_prompt: str | None = None):
+        """
+        Stream answer with proper system/user prompt separation for OpenAI models.
         
-        query = self.config.prompt_manager.answer.format(info=retrieved_info,query=query)
-        response = self.config.API_client.stream_chat({'query':query})
+        Args:
+            query: The user's question
+            retrieved_info: The retrieved context information
+            system_prompt: Optional custom system prompt (overrides default template system prompt)
+        """
+        # Get the answer prompt template
+        answer_template = self.config.prompt_manager.answer
+        
+        # Format the full prompt with retrieved info and query
+        formatted_prompt = answer_template.format(info=retrieved_info, query=query)
+        
+        # For OpenAI models, separate system and user prompts
+        if system_prompt:
+            # When custom system prompt is provided, use it as the ONLY system prompt
+            # and format the user content with retrieved context and query
+            parts = formatted_prompt.split("---Retrived Context---", 1)
+            if len(parts) == 2:
+                # Extract just the context and query parts (without the template's system instructions)
+                user_content = "---Retrived Context---" + parts[1]
+                response = self.config.API_client.stream_chat({
+                    'system_prompt': system_prompt,
+                    'query': user_content
+                })
+            else:
+                # Fallback: use custom system + full formatted as query
+                response = self.config.API_client.stream_chat({
+                    'system_prompt': system_prompt,
+                    'query': formatted_prompt
+                })
+        else:
+            # No custom system prompt - separate the template's role section
+            parts = formatted_prompt.split("---Retrived Context---", 1)
+            if len(parts) == 2:
+                # Use Role/Goal/Format sections as system prompt
+                system_part = parts[0].strip()
+                user_part = "---Retrived Context---" + parts[1]
+                response = self.config.API_client.stream_chat({
+                    'system_prompt': system_part,
+                    'query': user_part
+                })
+            else:
+                # Fallback to original behavior
+                response = self.config.API_client.stream_chat({'query': formatted_prompt})
+        
         yield from response
 
     # -------- Images: load + normalize paths --------

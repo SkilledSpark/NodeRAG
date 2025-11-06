@@ -1,0 +1,36 @@
+{
+  "completed": 3,
+  "total": 3,
+  "results": [
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, how do 5% of the Latinos see economic upward mobility for their children?",
+      "ground_truth": "Less well-off",
+      "prediction": "'''\nExtracted answer: 72%\nAnswer format: Integer\n'''",
+      "answer_format": "Str",
+      "evidence_pages": "[5]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, which one is greater in population in the survey? Foreign born Latinos, or the Latinos interviewed by cellphone?",
+      "ground_truth": "Latinos interviewed by cellphone",
+      "prediction": "'''\nExtracted answer: Foreign born Latinos\nAnswer format: String\n'''",
+      "answer_format": "Str",
+      "evidence_pages": "[19, 20]",
+      "evidence_sources": "['Table']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "From this report, which subgroup among Hispanics has gained most confidence from 2008 to 2015? ",
+      "ground_truth": "Some college or more",
+      "prediction": "'''\nExtracted answer: U.S.-born Hispanics\nAnswer format: String\n'''",
+      "answer_format": "Str",
+      "evidence_pages": "[14]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    }
+  ]
+}

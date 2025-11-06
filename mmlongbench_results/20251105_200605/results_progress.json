@@ -1,0 +1,39 @@
+{
+  "completed": 3,
+  "total": 3,
+  "results": [
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, how do 5% of the Latinos see economic upward mobility for their children?",
+      "ground_truth": "Less well-off",
+      "prediction": "The report indicates that a significant majority of Latinos are optimistic about their children's economic upward mobility. Specifically, 72% of Hispanic adults express the belief that their children will be better off financially than they themselves are. This optimism spans across various demographics within the Latino community, encompassing both U.S.-born and foreign-born individuals. \n\nHowever, it is important to note that there are differences in perceptions of upward mobility based on age. For instance, younger Latinos (ages 18-29) tend to have higher expectations for their children's financial future compared to older generations. The survey also identifies a smaller percentage, 16%, who believe their children\u2019s financial situation will be about the same as theirs, and a mere 5% who expect their children to be worse off financially.\n\nThis overwhelming sense of optimism among the majority of Latinos\u2014contrasting with the 5% who do not share this view\u2014demonstrates a collective belief in the potential for improved economic conditions and achievements for the younger generation, despite varying expectations and individual experiences within the community.",
+      "answer_format": "Str",
+      "evidence_pages": "[5]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, which one is greater in population in the survey? Foreign born Latinos, or the Latinos interviewed by cellphone?",
+      "ground_truth": "Latinos interviewed by cellphone",
+      "prediction": "Based on the retrieved information from the report, there were a total of 1,500 Latino respondents aged 18 and older included in the survey. This group consisted of 705 U.S.-born respondents (including Puerto Rico) and 795 foreign-born respondents (excluding Puerto Rico). Additionally, 821 respondents were interviewed via cell phone, while 679 were interviewed on landlines.\n\nTo address your question: \n\n1. The foreign-born Latinos in the survey numbered 795.\n2. The number of Latinos interviewed by cellphone was 821.\n\nSince 821 (cell phone respondents) is greater than 795 (foreign-born Latinos), it can be concluded that the number of Latinos interviewed by cellphone exceeds the number of foreign-born Latinos in the survey.",
+      "answer_format": "Str",
+      "evidence_pages": "[19, 20]",
+      "evidence_sources": "['Table']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "From this report, which subgroup among Hispanics has gained most confidence from 2008 to 2015? ",
+      "ground_truth": "Some college or more",
+      "prediction": "The report indicates that U.S.-born Hispanics have gained significant confidence in their financial situation from 2008 to 2015. Specifically, their positive views regarding their personal finances increased by 17 percentage points over this period. Additionally, those with at least some college experience also exhibited notable gains, with their confidence rising by 20 percentage points during the same timeframe.\n\nOverall, the data shows that U.S.-born Latinos and those who have completed some college are particularly optimistic about their financial health and expectations for the future, as they reflect substantial increases in confidence compared to other Hispanic subgroups. This trend illustrates a broader shift towards a more positive perspective on personal finances and economic prospects within these populations.",
+      "answer_format": "Str",
+      "evidence_pages": "[14]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0
+    }
+  ]
+}

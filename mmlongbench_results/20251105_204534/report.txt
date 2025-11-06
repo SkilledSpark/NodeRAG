@@ -1,0 +1,11 @@
+Overall Acc: 0.0 | Question Number: 3
+Overall F1-score: 0.0 | Question Number: 3
+-----------------------
+Single-page | Accuracy: 0.0 | Question Number: 2
+Cross-page | Accuracy: 0.0 | Question Number: 1
+Unanswerable | Accuracy: 0.0 | Question Number: 0
+-----------------------
+Evidence Sources: Chart | Accuracy: 0.0 | Question Number: 2
+Evidence Sources: Table | Accuracy: 0.0 | Question Number: 1
+-----------------------
+Document Type: Research report / Introduction | Accuracy: 0.0 | Question Number: 3

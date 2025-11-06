@@ -1,0 +1,45 @@
+{
+  "timestamp": "20251105_195840",
+  "accuracy": 0.0,
+  "f1_score": 0.0,
+  "total_samples": 3,
+  "completed_samples": 3,
+  "results": [
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, how do 5% of the Latinos see economic upward mobility for their children?",
+      "ground_truth": "Less well-off",
+      "prediction": "According to the report, a significant majority of Latinos express optimism about their children's economic upward mobility. Specifically, 72% of Latino respondents believe that their children will be better off financially than they themselves are now. This sentiment indicates a strong belief in the potential for economic improvement and success for the next generation. \n\nMoreover, this perspective on upward mobility varies among different demographic groups within the Latino community. For instance, 75% of immigrant adults and 70% of U.S.-born Latinos share this belief, suggesting that regardless of their background, many Latinos maintain a positive outlook on the economic futures of their children.\n\nThe report emphasizes that this optimism about financial improvement reflects broader hopes for socio-economic advancement among Latinos, indicating a collective confidence in their ability to navigate and benefit from the evolving economic landscape. This belief in better financial prospects for their children stands in contrast to some concerns about present economic challenges, such as household income not keeping pace with the cost of living, which remains a concern for many Latino families. Overall, the positive outlook on children's futures persists despite the prevailing economic difficulties.",
+      "answer_format": "Str",
+      "evidence_pages": "[5]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0,
+      "score": 0.0
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, which one is greater in population in the survey? Foreign born Latinos, or the Latinos interviewed by cellphone?",
+      "ground_truth": "Latinos interviewed by cellphone",
+      "prediction": "According to the retrieved context, the survey data indicates that 795 of the respondents were foreign-born Latinos, while 1,051 respondents were interviewed by cellphone. This shows that the number of Latinos interviewed by cellphone is greater than the number of foreign-born Latinos surveyed. \n\nIn summary, the number of cellphone interviews (1,051) exceeds the number of foreign-born Latino respondents (795). Thus, it can be concluded that Latinos interviewed by cellphone constitute a larger population in the survey compared to foreign-born Latinos.",
+      "answer_format": "Str",
+      "evidence_pages": "[19, 20]",
+      "evidence_sources": "['Table']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0,
+      "score": 0.0
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "From this report, which subgroup among Hispanics has gained most confidence from 2008 to 2015? ",
+      "ground_truth": "Some college or more",
+      "prediction": "According to the retrieved context, among Hispanics, individuals with educational qualifications, specifically those who have completed some college, saw the most significant increase in confidence regarding their personal finances from 2008 to 2015. The survey indicates that confidence in financial expectations for the upcoming year rose by 20 percentage points among Latinos with some college experience. This increase is notably larger compared to the improvements observed in other demographic subgroups, as high school graduates had an increase of 9 percentage points, and those with less than a high school education experienced an 11 percentage point increase.\n\nAdditionally, the survey also highlights that U.S.-born Hispanics and immigrant Hispanics showed an equal rise in optimism, with both groups indicating a 14 percentage point increase in their positive financial outlooks over the same period. However, the more pronounced improvement among those with some college education indicates that this subgroup has distinctly gained the most confidence regarding their financial situations during this timeframe.",
+      "answer_format": "Str",
+      "evidence_pages": "[14]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction",
+      "search_nodes_count": 0,
+      "score": 0.0
+    }
+  ]
+}

@@ -1,9 +1,8 @@
 """
 MMLongBench Evaluation Integration
 """
-import os
 import json
-from typing import List, Dict
+from typing import List, Dict, Iterator, Tuple
 from pathlib import Path
 
 def load_mmlongbench_samples(samples_path: str) -> List[Dict]:
@@ -11,26 +10,24 @@ def load_mmlongbench_samples(samples_path: str) -> List[Dict]:
     with open(samples_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def run_mmlongbench_evaluation(search_engine, samples: List[Dict], output_dir: str) -> Dict:
+def evaluate_sample_generator(search_engine, samples: List[Dict]) -> Iterator[Tuple[int, Dict, str]]:
     """
-    Run evaluation on MMLongBench samples
+    Generator that yields evaluation results one sample at a time
     
     Args:
         search_engine: The search engine instance
         samples: List of sample dictionaries
-        output_dir: Directory to save results
         
-    Returns:
-        Dictionary with evaluation results
+    Yields:
+        Tuple of (index, result_dict, status_message)
     """
-    results = []
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    total_samples = len(samples)
     
     for idx, sample in enumerate(samples):
         try:
             # Get question
             question = sample['question']
+            status_msg = f"Processing {idx+1}/{total_samples}: {question[:60]}..."
             
             # Search for answer
             searched = search_engine.search(question)
@@ -55,10 +52,101 @@ def run_mmlongbench_evaluation(search_engine, samples: List[Dict], output_dir: s
                 'evidence_sources': sample.get('evidence_sources', '[]'),
                 'doc_type': sample.get('doc_type', '')
             }
+            
+            yield (idx, result, status_msg)
+            
+        except Exception as e:
+            error_msg = f"Error processing sample {idx}: {e}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            
+            result = {
+                'doc_id': sample.get('doc_id', ''),
+                'question': sample.get('question', ''),
+                'answer': sample.get('answer', ''),
+                'pred': f"Error: {str(e)}",
+                'answer_type': sample.get('answer_format', 'Str'),
+                'evidence_pages': sample.get('evidence_pages', '[]'),
+                'evidence_sources': sample.get('evidence_sources', '[]'),
+                'doc_type': sample.get('doc_type', '')
+            }
+            
+            yield (idx, result, error_msg)
+
+def run_mmlongbench_evaluation(search_engine, samples: List[Dict], output_dir: str, progress_callback=None) -> Dict:
+    """
+    Run evaluation on MMLongBench samples
+    
+    Args:
+        search_engine: The search engine instance
+        samples: List of sample dictionaries
+        output_dir: Directory to save results
+        progress_callback: Optional callback function to report progress (current_idx, total)
+        
+    Returns:
+        Dictionary with evaluation results
+    """
+    import sys
+    results = []
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    total_samples = len(samples)
+    print(f"\n{'='*80}")
+    print(f"Starting MMLongBench Evaluation")
+    print(f"Total samples: {total_samples}")
+    print(f"{'='*80}\n")
+    sys.stdout.flush()
+    
+    for idx, sample in enumerate(samples):
+        try:
+            # Report progress
+            if progress_callback:
+                progress_callback(idx, total_samples, sample)
+            
+            # Print progress to console
+            question_preview = sample['question'][:60] + "..." if len(sample['question']) > 60 else sample['question']
+            print(f"[{idx+1}/{total_samples}] Processing: {question_preview}")
+            sys.stdout.flush()
+            
+            # Get question
+            question = sample['question']
+            
+            # Search for answer
+            searched = search_engine.search(question)
+            
+            # Generate answer
+            answer = search_engine.stream_answer(question, searched.structured_prompt)
+            
+            # For evaluation, we need the final answer string
+            if hasattr(answer, '__iter__') and not isinstance(answer, str):
+                answer_text = ''.join(answer)
+            else:
+                answer_text = str(answer)
+            
+            print(f"  ✓ Generated answer ({len(answer_text)} chars)")
+            sys.stdout.flush()
+            
+            # Store result
+            result = {
+                'doc_id': sample.get('doc_id', ''),
+                'question': question,
+                'answer': sample.get('answer', ''),
+                'pred': answer_text,
+                'answer_type': sample.get('answer_format', 'Str'),
+                'evidence_pages': sample.get('evidence_pages', '[]'),
+                'evidence_sources': sample.get('evidence_sources', '[]'),
+                'doc_type': sample.get('doc_type', '')
+            }
             results.append(result)
             
         except Exception as e:
-            print(f"Error processing sample {idx}: {e}")
+            error_msg = f"Error processing sample {idx}: {e}"
+            print(f"  ✗ {error_msg}")
+            sys.stdout.flush()
+            import traceback
+            traceback.print_exc()
             result = {
                 'doc_id': sample.get('doc_id', ''),
                 'question': sample.get('question', ''),

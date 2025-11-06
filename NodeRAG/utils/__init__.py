@@ -9,6 +9,7 @@ from .graph_operator import IGraph,MultigraphConcat
 from .HNSW import HNSW
 from .yaml_operation import YamlHandler
 from .image_handler import ImageHandler
+from .reset_system import reset_system_cli
 
 __all__ = [
     'Tracker',
@@ -23,5 +24,6 @@ __all__ = [
     'MultigraphConcat',
     'HNSW',
     'YamlHandler',
-    'ImageHandler'
+    'ImageHandler',
+    'reset_system_cli'
 ]

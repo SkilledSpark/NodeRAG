@@ -3,6 +3,7 @@ import os
 from ..logging import setup_logger
 import shutil
 import yaml
+import json
 from typing import Dict,Any
 
 
@@ -303,6 +304,113 @@ class NodeConfig():
         return config_path
         
         
+
+    def reset_system(self, confirm: bool = False) -> None:
+        """
+        Reset the system by deleting all indices, graph nodes, and related cached files.
+        This will completely clear the knowledge graph and all processed data.
+        
+        Args:
+            confirm: If True, proceed with reset. If False, raise an error requiring confirmation.
+        """
+        if not confirm:
+            raise ValueError(
+                "System reset requires explicit confirmation. "
+                "Call reset_system(confirm=True) to proceed with deletion."
+            )
+        
+        self.console.print("[bold yellow]Starting system reset...[/bold yellow]")
+        
+        # List of files to delete
+        files_to_delete = [
+            self.embedding_path,
+            self.text_path,
+            self.documents_path,
+            self.text_decomposition_path,
+            self.semantic_units_path,
+            self.entities_path,
+            self.relationship_path,
+            self.graph_path,
+            self.attributes_path,
+            self.embedding_cache,
+            self.embedding,
+            self.base_graph_path,
+            self.summary_path,
+            self.high_level_elements_path,
+            self.high_level_elements_titles_path,
+            self.HNSW_path,
+            self.hnsw_graph_path,
+            self.id_map_path,
+            self.LLM_error_cache,
+            self.indices_path,
+            self.document_hash_path,
+        ]
+        
+        # Delete files
+        deleted_files = []
+        for file_path in files_to_delete:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    deleted_files.append(file_path)
+                    self.console.print(f"[green]Deleted:[/green] {os.path.basename(file_path)}")
+                except Exception as e:
+                    self.console.print(f"[red]Error deleting {file_path}: {e}[/red]")
+            else:
+                self.console.print(f"[dim]Skipped (not found):[/dim] {os.path.basename(file_path)}")
+        
+        # Delete entity image mappings directory
+        entity_mappings_dir = os.path.join(self.main_folder, 'entity_image_mappings')
+        if os.path.exists(entity_mappings_dir):
+            try:
+                shutil.rmtree(entity_mappings_dir)
+                self.console.print(f"[green]Deleted directory:[/green] entity_image_mappings")
+            except Exception as e:
+                self.console.print(f"[red]Error deleting entity_image_mappings: {e}[/red]")
+        
+        # Delete extracted images directory
+        extracted_images_dir = os.path.join(self.main_folder, 'extracted_images')
+        if os.path.exists(extracted_images_dir):
+            try:
+                shutil.rmtree(extracted_images_dir)
+                self.console.print(f"[green]Deleted directory:[/green] extracted_images")
+            except Exception as e:
+                self.console.print(f"[red]Error deleting extracted_images: {e}[/red]")
+        
+        # Reset indices to initial state
+        self.indices = index_manager([
+            document_index_counter,
+            text_unit_index_counter,
+            semantic_unit_index_counter,
+            entity_index_counter,
+            relation_index_counter,
+            attribute_index_counter,
+            community_summary_index_counter,
+            high_level_element_index_counter
+        ], self.console)
+        
+        # Reset state file
+        state_data = {
+            "Current_state": "READY",
+            "Error_type": "NO_ERROR",
+            "Is_incremental": False
+        }
+        with open(self.state_path, 'w') as f:
+            json.dump(state_data, f, indent=4)
+        
+        self.console.print(f"[green]Reset state file[/green]")
+        
+        # Clear info log (optional - keep history but add reset marker)
+        self.record_info(f"=" * 80)
+        self.record_info(f"SYSTEM RESET PERFORMED - {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.record_info(f"Deleted {len(deleted_files)} files")
+        self.record_info(f"=" * 80)
+        
+        self.console.print(f"\n[bold green]✓ System reset complete![/bold green]")
+        self.console.print(f"[bold cyan]Summary:[/bold cyan]")
+        self.console.print(f"  - Files deleted: {len(deleted_files)}")
+        self.console.print(f"  - Indices reset to initial state")
+        self.console.print(f"  - System ready for fresh indexing")
 
     @classmethod
     def from_main_folder(cls, main_folder: str):

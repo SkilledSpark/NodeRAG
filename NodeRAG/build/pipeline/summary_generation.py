@@ -148,17 +148,28 @@ class SummaryGeneration:
         await self.get_summary_embedding()
 
         
-        centroids = math.ceil(math.sqrt(len(All_nodes)+len(self.high_level_elements)))
-        threshold = (len(All_nodes)+len(self.high_level_elements))/centroids
+        total_items = len(All_nodes) + len(self.high_level_elements)
+        centroids = math.ceil(math.sqrt(total_items))
+        
+        # Ensure centroids doesn't exceed total items and has a minimum value
+        centroids = max(1, min(centroids, total_items))
+        
+        threshold = total_items / centroids if centroids > 0 else 0
         n=0
-        if threshold > self.config.Hcluster_size:
+        if threshold > self.config.Hcluster_size and total_items > 1:
             embedding_list = np.array([self.mapper.embeddings[node] for node in All_nodes], dtype=np.float32)
             high_level_element_embedding = np.array([he.embedding for he in self.high_level_elements], dtype=np.float32)
             all_embeddings = np.vstack([high_level_element_embedding, embedding_list])
 
-            kmeans = faiss.Kmeans(d=all_embeddings.shape[1], k=centroids)
-            kmeans.train(all_embeddings.astype(np.float32))
-            _, cluster_labels = kmeans.assign(all_embeddings.astype(np.float32))
+            try:
+                kmeans = faiss.Kmeans(d=all_embeddings.shape[1], k=centroids, niter=20, verbose=False)
+                kmeans.train(all_embeddings.astype(np.float32))
+                _, cluster_labels = kmeans.assign(all_embeddings.astype(np.float32))
+            except (AssertionError, Exception) as e:
+                # Fallback: if FAISS fails, use simple assignment without clustering
+                self.config.console.print(f'[bold yellow]KMeans clustering failed, using direct assignment: {str(e)}[/bold yellow]')
+                # Assign all items to a single cluster or proportionally distribute
+                cluster_labels = np.arange(len(all_embeddings)) % centroids
             high_level_element_cluster_labels = cluster_labels[:len(self.high_level_elements)]
             embedding_cluster_labels = cluster_labels[len(self.high_level_elements):]
             self.config.console.print(f'[bold green]KMeans Clustering with {centroids} centroids[/bold green]')

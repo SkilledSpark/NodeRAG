@@ -96,6 +96,21 @@ class OPENAI(LLM):
         self.client_async = AsyncOpenAI(api_key=self.api_keys)
         self.config = self.extract_config(Config)
     
+    def __del__(self):
+        """Cleanup method to properly close async client."""
+        try:
+            if hasattr(self, 'client_async') and self.client_async is not None:
+                # Close the async client if possible
+                if hasattr(self.client_async, 'close'):
+                    # Note: We can't await here in __del__, but setting this helps
+                    # The client will clean up synchronously when possible
+                    try:
+                        self.client_async._client.close()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    
         
     def extract_config(self, config: ModelConfig) -> ModelConfig:
         options = {
@@ -210,6 +225,18 @@ class OpenAI_Embedding(LLM):
             api_keys = os.getenv("OPENAI_API_KEY")
         self.client = OpenAI(api_key=api_keys)
         self.client_async = AsyncOpenAI(api_key=api_keys)
+    
+    def __del__(self):
+        """Cleanup method to properly close async client."""
+        try:
+            if hasattr(self, 'client_async') and self.client_async is not None:
+                if hasattr(self.client_async, 'close'):
+                    try:
+                        self.client_async._client.close()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     
     @backoff.on_exception(backoff.expo, 
                           [RateLimitError, Timeout, APIConnectionError], 

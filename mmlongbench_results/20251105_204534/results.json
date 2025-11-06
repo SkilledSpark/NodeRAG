@@ -1,0 +1,39 @@
+{
+  "timestamp": "20251105_204534",
+  "total_samples": 3,
+  "completed_samples": 3,
+  "config_path": "C:\\Users\\Lakshya\\OneDrive\\Documents\\GraphRAG\\NodeRAG\\NodeRAG\\data\\Node_config.yaml",
+  "samples_path": "C:\\Users\\Lakshya\\OneDrive\\Documents\\GraphRAG\\NodeRAG\\NodeRAG\\MMLongBench\\data\\samples.json",
+  "results": [
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, how do 5% of the Latinos see economic upward mobility for their children?",
+      "ground_truth": "Less well-off",
+      "prediction": "According to the report, 72% of Latinos expect their children to be better off financially than they are themselves. This reflects a general optimism about economic upward mobility within the Latino community. Only a small percentage, 16%, believes their children's financial situation will be about the same as theirs.",
+      "answer_format": "Str",
+      "evidence_pages": "[5]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "According to the report, which one is greater in population in the survey? Foreign born Latinos, or the Latinos interviewed by cellphone?",
+      "ground_truth": "Latinos interviewed by cellphone",
+      "prediction": "According to the report, the population of Latinos interviewed by cellphone (630 respondents) is greater than the population of foreign-born Latinos (795 respondents).",
+      "answer_format": "Str",
+      "evidence_pages": "[19, 20]",
+      "evidence_sources": "['Table']",
+      "doc_type": "Research report / Introduction"
+    },
+    {
+      "doc_id": "PH_2016.06.08_Economy-Final.pdf",
+      "question": "From this report, which subgroup among Hispanics has gained most confidence from 2008 to 2015? ",
+      "ground_truth": "Some college or more",
+      "prediction": "From the report, the subgroup among Hispanics that gained the most confidence from 2008 to 2015 is Latino adults with some college experience or more, where optimism about their family's financial situation increased by 20 percentage points.",
+      "answer_format": "Str",
+      "evidence_pages": "[14]",
+      "evidence_sources": "['Chart']",
+      "doc_type": "Research report / Introduction"
+    }
+  ]
+}
