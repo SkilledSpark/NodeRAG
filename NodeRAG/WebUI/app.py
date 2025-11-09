@@ -98,18 +98,13 @@ def save_config(path):
 def display_header():
     """Display the header section with title and description"""
     # Create two columns for title and expander
-    col1, col2 = st.columns([0.5, 0.5])  # Numbers represent the width ratio of the columns
+    col1,= st.columns([0.5])  # Numbers represent the width ratio of the columns
 
     # Put title in first column
     with col1:
-        st.title('UnifiedGraphRAG')
+        st.title('MSA with GraphRAG')
 
-    # Put expander in second column
-    with col2:
-        st.markdown('<div style="margin-top: 26px;"></div>', unsafe_allow_html=True)
-        with st.expander("What is UnifiedGraphRAG?"):
-            st.write('UnifiedGraphRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
-
+    
 def display_chat_history():
     """Display the chat history from session state"""
     for message in st.session_state.messages:
