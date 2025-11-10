@@ -224,9 +224,58 @@ def add_message(role: str, user_input: str):
                                 # Show sentiment results in a compact container (avoid nested expanders)
                                 sentiment_container = st.container()
                                 sentiment_container.markdown("**🔍 Sentiment Analysis on Retrieved Documents**")
+                                # Build per-document sentiment lines and aggregation
+                                per_doc_lines = []
+                                pos_scores = []
+                                neg_scores = []
                                 for i, r in enumerate(results):
                                     label = searched.retrieved_list[i][1] if i < len(searched.retrieved_list) else str(i)
-                                    sentiment_container.write(f"[{i+1}] ({label}) → {r}")
+                                    if isinstance(r, dict):
+                                        lab = r.get('label') or r.get('label_0') or str(r)
+                                        score = r.get('score', None)
+                                        if isinstance(score, (int, float)):
+                                            score_text = f"{score:.3f}"
+                                            if str(lab).upper().startswith('POS'):
+                                                pos_scores.append(float(score))
+                                            elif str(lab).upper().startswith('NEG'):
+                                                neg_scores.append(float(score))
+                                        else:
+                                            score_text = str(score)
+                                        line = f"[{i+1}] ({label}) → {lab} ({score_text})"
+                                    else:
+                                        line = f"[{i+1}] ({label}) → {r}"
+                                    per_doc_lines.append(line)
+                                    sentiment_container.write(line)
+
+                                # Aggregated summary
+                                pos_count = len(pos_scores)
+                                neg_count = len(neg_scores)
+                                summary_parts = []
+                                if pos_count or neg_count:
+                                    summary_parts.append(f"Positive: {pos_count}")
+                                    summary_parts.append(f"Negative: {neg_count}")
+                                    if pos_count:
+                                        summary_parts.append(f"Avg positive score: {sum(pos_scores)/pos_count:.3f}")
+                                    if neg_count:
+                                        summary_parts.append(f"Avg negative score: {sum(neg_scores)/neg_count:.3f}")
+                                    summary_text = "; ".join(summary_parts)
+                                    sentiment_container.markdown(f"**Summary:** {summary_text}")
+                                else:
+                                    # If model returned non-standard labels, just show count
+                                    sentiment_container.markdown(f"**Summary:** {len(per_doc_lines)} items analyzed")
+
+                                # Attach results and an augmented retrieved prompt for LLM
+                                try:
+                                    searched.sentiment_results = results
+                                except Exception:
+                                    pass
+                                # Prepare augmented retrieved info to pass to the LLM
+                                try:
+                                    per_doc_block = "\n".join(per_doc_lines)
+                                    augmented_retrieved = searched.structured_prompt + "\n\n[Sentiment Summary]\n" + (summary_text if 'summary_text' in locals() else "") + "\n[Per-document sentiment]\n" + per_doc_block
+                                    searched.structured_prompt_augmented = augmented_retrieved
+                                except Exception:
+                                    searched.structured_prompt_augmented = searched.structured_prompt
                             except Exception as e:
                                 # Non-fatal: don't block retrieval/generation if sentiment fails
                                 st.caption(f"(Sentiment analysis skipped: {e})")
@@ -241,7 +290,9 @@ def add_message(role: str, user_input: str):
             
             # Show generation status
             with status_placeholder.status("Generating response..."):
-                content = st.session_state.settings['search_engine'].stream_answer(user_input,searched.structured_prompt)
+                # Use augmented retrieved prompt if sentiment analysis added extra context
+                retrieved_for_query = getattr(searched, 'structured_prompt_augmented', None) or searched.structured_prompt
+                content = st.session_state.settings['search_engine'].stream_answer(user_input, retrieved_for_query)
                 for chunk in content:
                     for char in chunk:
                         full_response += char
