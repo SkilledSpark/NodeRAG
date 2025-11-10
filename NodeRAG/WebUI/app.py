@@ -98,18 +98,13 @@ def save_config(path):
 def display_header():
     """Display the header section with title and description"""
     # Create two columns for title and expander
-    col1, col2 = st.columns([0.5, 0.5])  # Numbers represent the width ratio of the columns
+    col1,= st.columns([0.5])  # Numbers represent the width ratio of the columns
 
     # Put title in first column
     with col1:
-        st.title('UnifiedGraphRAG')
+        st.title('MSA with GraphRAG')
 
-    # Put expander in second column
-    with col2:
-        st.markdown('<div style="margin-top: 26px;"></div>', unsafe_allow_html=True)
-        with st.expander("What is UnifiedGraphRAG?"):
-            st.write('UnifiedGraphRAG is a graph-based retrieval-augmented generation (RAG) framework that structures knowledge as a heterogeneous graph to enhance retrieval precision and multi-hop reasoning.')
-
+    
 def display_chat_history():
     """Display the chat history from session state"""
     for message in st.session_state.messages:
@@ -204,6 +199,38 @@ def add_message(role: str, user_input: str):
                 if st.session_state.settings['relevant_info'] == 'On':
                     if searched.retrieved_list is not None:
                         display_retrieval_list(searched.retrieved_list)
+                        # Optionally run sentiment analysis over retrieved documents
+                        if st.session_state.config.get('enable_sentiment', False):
+                            try:
+                                # Cache the pipeline to avoid reloading model repeatedly
+                                if 'sentiment_pipeline' not in st.session_state.settings or \
+                                   st.session_state.settings.get('sentiment_pipeline_model') != st.session_state.config.get('sentiment_model'):
+                                    from transformers import pipeline
+                                    model_name = st.session_state.config.get('sentiment_model')
+                                    st.session_state.settings['sentiment_pipeline'] = pipeline("sentiment-analysis", model=model_name)
+                                    st.session_state.settings['sentiment_pipeline_model'] = model_name
+
+                                sentiment_pipe = st.session_state.settings.get('sentiment_pipeline')
+                                # Prepare documents: use the retrieved text parts
+                                documents = [content for content, _ in searched.retrieved_list]
+                                # Truncate very long chunks to a reasonable size for the model
+                                documents_trimmed = [doc[:1000] if isinstance(doc, str) else str(doc) for doc in documents]
+                                results = sentiment_pipe(documents_trimmed)
+                                # Attach results to the search object for later use/display
+                                try:
+                                    searched.sentiment_results = results
+                                except Exception:
+                                    pass
+                                # Show sentiment results in a compact container (avoid nested expanders)
+                                sentiment_container = st.container()
+                                sentiment_container.markdown("**🔍 Sentiment Analysis on Retrieved Documents**")
+                                for i, r in enumerate(results):
+                                    label = searched.retrieved_list[i][1] if i < len(searched.retrieved_list) else str(i)
+                                    sentiment_container.write(f"[{i+1}] ({label}) → {r}")
+                            except Exception as e:
+                                # Non-fatal: don't block retrieval/generation if sentiment fails
+                                st.caption(f"(Sentiment analysis skipped: {e})")
+
                         # Show associated images if any were linked
                         try:
                             if getattr(searched, 'associated_images', None):
@@ -524,6 +551,18 @@ def sidebar():
                 'Relevant Information', 
                 ['On', 'Off'],
                 index=0 
+            )
+            # Sentiment analysis setting (uses transformers)
+            # Note: transformers must be installed in the environment for this to work
+            st.session_state.config['enable_sentiment'] = st.checkbox(
+                "Enable Sentiment Analysis (requires 'transformers')",
+                value=st.session_state.config.get('enable_sentiment', False),
+                help="When enabled, run a sentiment-analysis transformer pipeline on retrieved documents and show results"
+            )
+            st.session_state.config['sentiment_model'] = st.text_input(
+                "Sentiment Model",
+                value=st.session_state.config.get('sentiment_model', 'distilbert-base-uncased-finetuned-sst-2-english'),
+                help="HuggingFace model name to use for sentiment-analysis pipeline"
             )
             # Search settings
             
